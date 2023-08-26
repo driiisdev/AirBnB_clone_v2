@@ -1,109 +1,128 @@
 #!/usr/bin/python3
-""" Module for testing file storage"""
-import unittest
-from models.base_model import BaseModel
-from models import storage
-import os
 
+"""
+Unit test suite for the FileStorage module
+"""
+
+import os
+import unittest
+import uuid
+import json
+from time import sleep
+from datetime import datetime
+from models.base_model import BaseModel
+from models.engine.file_storage import FileStorage
 
 class TestFileStorage(unittest.TestCase):
-    """ Class to test the file storage method """
-
+    """
+    This class contains tests for the storage methods within FileStorage
+    """
+    
     def setUp(self):
-        """ Set up test environment """
-        del_list = []
-        for key in storage._FileStorage__objects.keys():
-            del_list.append(key)
-        for key in del_list:
-            del storage._FileStorage__objects[key]
+        """
+        Initialize a FileStorage instance for testing
+        """
+        self.storage = FileStorage()
+        
+    def test_storage_methods(self):
+        """
+        Test the functionality of various storage methods
+        """
+        # Obtain relevant attributes
+        storage_dict = FileStorage.__dict__
+        file_path_attr = '_FileStorage__file_path'
+        objects_attr = '_FileStorage__objects'
+        file_path = storage_dict[file_path_attr]
+        objects_dict = storage_dict[objects_attr]
 
-    def tearDown(self):
-        """ Remove storage file at end of tests """
-        try:
-            os.remove('file.json')
-        except:
-            pass
+        # Assert types of attributes
+        self.assertTrue(isinstance(file_path, str) and file_path)
+        self.assertTrue(isinstance(objects_dict, dict))
 
-    def test_obj_list_empty(self):
-        """ __objects is initially empty """
-        self.assertEqual(len(storage.all()), 0)
+        # Assert object attributes
+        self.assertTrue(hasattr(self.storage, file_path_attr))
+        self.assertTrue(getattr(self.storage, objects_attr) is self.storage.all())
 
-    def test_new(self):
-        """ New object is correctly added to __objects """
-        new = BaseModel()
-        for obj in storage.all().values():
-            temp = obj
-        self.assertTrue(temp is obj)
+        # Clear objects_dict for testing
+        objects_dict.clear()
 
-    def test_all(self):
-        """ __objects is properly returned """
-        new = BaseModel()
-        temp = storage.all()
-        self.assertIsInstance(temp, dict)
+        # Object registration and persistent __objects dict
+        original_objects = self.storage.all()
+        original_objects_copy = original_objects.copy()
+        new_obj = BaseModel()
+        self.storage.new(new_obj)
+        self.assertTrue(original_objects is self.storage.all())
+        self.assertEqual(len(original_objects.keys()), 1)
+        self.assertTrue(set(self.storage.all().keys()).difference(set(original_objects_copy.keys())) ==
+                        {'BaseModel.{}'.format(new_obj.id)})
 
-    def test_base_model_instantiation(self):
-        """ File is not created on BaseModel save """
-        new = BaseModel()
-        self.assertFalse(os.path.exists('file.json'))
+        original_objects_copy = original_objects.copy()
+        # storage.new(obj)
+        self.assertTrue(original_objects is self.storage.all())
+        self.assertEqual(original_objects, original_objects_copy)
 
-    def test_empty(self):
-        """ Data is saved to file """
-        new = BaseModel()
-        thing = new.to_dict()
-        new.save()
-        new2 = BaseModel(**thing)
-        self.assertNotEqual(os.path.getsize('file.json'), 0)
+        new_obj = BaseModel()
+        self.storage.new(new_obj)
+        self.assertEqual(len(original_objects.keys()), 2)
 
-    def test_save(self):
-        """ FileStorage save method """
-        new = BaseModel()
-        storage.save()
-        self.assertTrue(os.path.exists('file.json'))
+        # Check serialization
+        original_objects_copy = original_objects.copy()
+        self.storage.save()
+        self.assertTrue(os.path.isfile(file_path))
+        with open(file_path, 'r') as file:
+            json_objects = json.load(file)
+            self.assertTrue(isinstance(json_objects, dict))
+            self.assertEqual(len(json_objects.keys()), 2)
+            self.assertTrue(all(v in original_objects.keys() for v in json_objects.keys()))
 
-    def test_reload(self):
-        """ Storage file is successfully loaded to __objects """
-        new = BaseModel()
-        storage.save()
-        storage.reload()
-        for obj in storage.all().values():
-            loaded = obj
-        self.assertEqual(new.to_dict()['id'], loaded.to_dict()['id'])
+        self.storage.all().clear()
+        self.storage.reload()
 
-    def test_reload_empty(self):
-        """ Load from an empty file """
-        with open('file.json', 'w') as f:
-            pass
-        with self.assertRaises(ValueError):
-            storage.reload()
+        # Copy the storage's objects and convert them to dictionaries
+        original_objects_copy = self.storage.all().copy()
 
-    def test_reload_from_nonexistent(self):
-        """ Nothing happens if file does not exist """
-        self.assertEqual(storage.reload(), None)
+        # Check deserialization
+        original_objects_copy = self.storage.all().copy()
+        deserialized_objects_copy = self.storage.all().copy()
+        self.assertEqual(original_objects_copy, deserialized_objects_copy)
+        self.assertEqual(original_objects_copy, deserialized_objects_copy)
 
-    def test_base_model_save(self):
-        """ BaseModel save method calls storage save """
-        new = BaseModel()
-        new.save()
-        self.assertTrue(os.path.exists('file.json'))
+        # Check absence of deserialization for missing file
+        original_objects_copy = self.storage.all().copy()
+        os.remove(file_path)
+        self.storage.reload()
+        self.assertEqual(original_objects_copy, self.storage.all())
 
-    def test_type_path(self):
-        """ Confirm __file_path is string """
-        self.assertEqual(type(storage._FileStorage__file_path), str)
+        # Automatic registration for instances created without args
+        new_obj = BaseModel()
+        obj_key = 'BaseModel.{}'.format(new_obj.id)
+        self.assertTrue(obj_key in self.storage.all() and self.storage.all()[obj_key] is new_obj)
+        sleep(.01)
+        current_time = datetime.utcnow()
+        new_obj.updated_at = current_time
+        new_obj.save()
+        self.storage.all().clear()
+        self.storage.reload()
+        updated_objects = self.storage.all()
+        self.storage.reload()  # Insignificant reload
+        updated_objects2 = self.storage.all()
 
-    def test_type_objects(self):
-        """ Confirm __objects is a dict """
-        self.assertEqual(type(storage.all()), dict)
+        # Same deserialization
+        self.assertEqual(new_obj.to_dict(), self.storage.all()[obj_key].to_dict())
+        self.assertFalse(new_obj is self.storage.all()[obj_key].to_dict())
 
-    def test_key_format(self):
-        """ Key is properly formatted """
-        new = BaseModel()
-        _id = new.to_dict()['id']
-        for key in storage.all().keys():
-            temp = key
-        self.assertEqual(temp, 'BaseModel' + '.' + _id)
+        # Args should not count towards manual instantiation
+        new_obj = BaseModel(1, 2, 3)
+        obj_key = 'BaseModel.{}'.format(new_obj.id)
+        self.assertTrue(obj_key in self.storage.all() and self.storage.all()[obj_key] is new_obj)
 
-    def test_storage_var_created(self):
-        """ FileStorage object storage created """
-        from models.engine.file_storage import FileStorage
-        print(type(storage))
-        self.assertEqual(type(storage), FileStorage)
+        # Instances constructed with kwargs are not registered
+        new_obj = BaseModel(id=str(uuid.uuid4()), created_at=current_time.isoformat(),
+                            updated_at=current_time.isoformat())
+        obj_key = 'BaseModel.{}'.format(new_obj.id)
+        self.assertFalse(obj_key in self.storage.all())
+        self.assertFalse(new_obj in self.storage.all().values())
+
+
+if __name__ == "__main__":
+    unittest.main()
