@@ -268,5 +268,6 @@ class TestConsole(unittest.TestCase):
             """Test alternate destroy command inpout DB"""
             return True
 
+
 if __name__ == "__main__":
     unittest.main()
