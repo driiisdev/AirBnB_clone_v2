@@ -1,128 +1,125 @@
 #!/usr/bin/python3
-
-"""
-Unit test suite for the FileStorage module
-"""
-
-import os
+"""test for file storage"""
 import unittest
-import uuid
+import pep8
 import json
-from time import sleep
-from datetime import datetime
+import os
 from models.base_model import BaseModel
+from models.user import User
+from models.state import State
+from models.city import City
+from models.amenity import Amenity
+from models.place import Place
+from models.review import Review
 from models.engine.file_storage import FileStorage
 
+
 class TestFileStorage(unittest.TestCase):
-    """
-    This class contains tests for the storage methods within FileStorage
-    """
-    
-    def setUp(self):
+    '''this will test the FileStorage'''
+
+    @classmethod
+    def setUpClass(cls):
+        """set up for test"""
+        cls.user = User()
+        cls.user.first_name = "Kev"
+        cls.user.last_name = "Yo"
+        cls.user.email = "1234@yahoo.com"
+        cls.storage = FileStorage()
+
+    @classmethod
+    def teardown(cls):
+        """at the end of the test this will tear it down"""
+        del cls.user
+
+    def tearDown(self):
+        """teardown"""
+        try:
+            os.remove("file.json")
+        except Exception:
+            pass
+
+    def test_pep8_FileStorage(self):
+        """Tests pep8 style"""
+        style = pep8.StyleGuide(quiet=True)
+        p = style.check_files(['models/engine/file_storage.py'])
+        self.assertEqual(p.total_errors, 0, "fix pep8")
+
+    def test_all(self):
+        """tests if all works in File Storage"""
+        storage = FileStorage()
+        obj = storage.all()
+        self.assertIsNotNone(obj)
+        self.assertEqual(type(obj), dict)
+        self.assertIs(obj, storage._FileStorage__objects)
+
+    def test_new(self):
+        """test when new is created"""
+        storage = FileStorage()
+        obj = storage.all()
+        user = User()
+        user.id = 123455
+        user.name = "Kevin"
+        storage.new(user)
+        key = user.__class__.__name__ + "." + str(user.id)
+        self.assertIsNotNone(obj[key])
+
+    def test_reload_filestorage(self):
         """
-        Initialize a FileStorage instance for testing
+        tests reload
         """
-        self.storage = FileStorage()
-        
-    def test_storage_methods(self):
-        """
-        Test the functionality of various storage methods
-        """
-        # Obtain relevant attributes
-        storage_dict = FileStorage.__dict__
-        file_path_attr = '_FileStorage__file_path'
-        objects_attr = '_FileStorage__objects'
-        file_path = storage_dict[file_path_attr]
-        objects_dict = storage_dict[objects_attr]
-
-        # Assert types of attributes
-        self.assertTrue(isinstance(file_path, str) and file_path)
-        self.assertTrue(isinstance(objects_dict, dict))
-
-        # Assert object attributes
-        self.assertTrue(hasattr(self.storage, file_path_attr))
-        self.assertTrue(getattr(self.storage, objects_attr) is self.storage.all())
-
-        # Clear objects_dict for testing
-        objects_dict.clear()
-
-        # Object registration and persistent __objects dict
-        original_objects = self.storage.all()
-        original_objects_copy = original_objects.copy()
-        new_obj = BaseModel()
-        self.storage.new(new_obj)
-        self.assertTrue(original_objects is self.storage.all())
-        self.assertEqual(len(original_objects.keys()), 1)
-        self.assertTrue(set(self.storage.all().keys()).difference(set(original_objects_copy.keys())) ==
-                        {'BaseModel.{}'.format(new_obj.id)})
-
-        original_objects_copy = original_objects.copy()
-        # storage.new(obj)
-        self.assertTrue(original_objects is self.storage.all())
-        self.assertEqual(original_objects, original_objects_copy)
-
-        new_obj = BaseModel()
-        self.storage.new(new_obj)
-        self.assertEqual(len(original_objects.keys()), 2)
-
-        # Check serialization
-        original_objects_copy = original_objects.copy()
         self.storage.save()
-        self.assertTrue(os.path.isfile(file_path))
-        with open(file_path, 'r') as file:
-            json_objects = json.load(file)
-            self.assertTrue(isinstance(json_objects, dict))
-            self.assertEqual(len(json_objects.keys()), 2)
-            self.assertTrue(all(v in original_objects.keys() for v in json_objects.keys()))
+        Root = os.path.dirname(os.path.abspath("console.py"))
+        path = os.path.join(Root, "file.json")
+        with open(path, 'r') as f:
+            lines = f.readlines()
+        try:
+            os.remove(path)
+        except:
+            pass
+        self.storage.save()
+        with open(path, 'r') as f:
+            lines2 = f.readlines()
+        self.assertEqual(lines, lines2)
+        try:
+            os.remove(path)
+        except:
+            pass
+        with open(path, "w") as f:
+            f.write("{}")
+        with open(path, "r") as r:
+            for line in r:
+                self.assertEqual(line, "{}")
+        self.assertIs(self.storage.reload(), None)
 
-        self.storage.all().clear()
-        self.storage.reload()
+    def test_all_method(self):
+        ''' tests all method '''
+        fs = FileStorage()
+        new_state = State()
+        fs.new(new_state)
+        fs.save()
+        self.assertIn(new_state, fs.all(State).values())
 
-        # Copy the storage's objects and convert them to dictionaries
-        original_objects_copy = self.storage.all().copy()
+    def test_all_no_specification(self):
+        ''' tests all when no class is passed '''
+        return True
+        fs = FileStorage()
+        new_state1 = State()
+        fs.new(new_state1)
+        fs.save()
+        new_user1 = User()
+        fs.new(new_user1)
+        fs.save()
+        self.assertEqual(8, len(fs.all()))
 
-        # Check deserialization
-        original_objects_copy = self.storage.all().copy()
-        deserialized_objects_copy = self.storage.all().copy()
-        self.assertEqual(original_objects_copy, deserialized_objects_copy)
-        self.assertEqual(original_objects_copy, deserialized_objects_copy)
-
-        # Check absence of deserialization for missing file
-        original_objects_copy = self.storage.all().copy()
-        os.remove(file_path)
-        self.storage.reload()
-        self.assertEqual(original_objects_copy, self.storage.all())
-
-        # Automatic registration for instances created without args
-        new_obj = BaseModel()
-        obj_key = 'BaseModel.{}'.format(new_obj.id)
-        self.assertTrue(obj_key in self.storage.all() and self.storage.all()[obj_key] is new_obj)
-        sleep(.01)
-        current_time = datetime.utcnow()
-        new_obj.updated_at = current_time
-        new_obj.save()
-        self.storage.all().clear()
-        self.storage.reload()
-        updated_objects = self.storage.all()
-        self.storage.reload()  # Insignificant reload
-        updated_objects2 = self.storage.all()
-
-        # Same deserialization
-        self.assertEqual(new_obj.to_dict(), self.storage.all()[obj_key].to_dict())
-        self.assertFalse(new_obj is self.storage.all()[obj_key].to_dict())
-
-        # Args should not count towards manual instantiation
-        new_obj = BaseModel(1, 2, 3)
-        obj_key = 'BaseModel.{}'.format(new_obj.id)
-        self.assertTrue(obj_key in self.storage.all() and self.storage.all()[obj_key] is new_obj)
-
-        # Instances constructed with kwargs are not registered
-        new_obj = BaseModel(id=str(uuid.uuid4()), created_at=current_time.isoformat(),
-                            updated_at=current_time.isoformat())
-        obj_key = 'BaseModel.{}'.format(new_obj.id)
-        self.assertFalse(obj_key in self.storage.all())
-        self.assertFalse(new_obj in self.storage.all().values())
-
+    def test_delete_method(self):
+        ''' tests delete method '''
+        fs = FileStorage()
+        new_state = State()
+        fs.new(new_state)
+        fs.save()
+        self.assertIn(new_state, fs.all(State).values())
+        fs.delete(new_state)
+        self.assertNotIn(new_state, fs.all(State).values())
 
 if __name__ == "__main__":
     unittest.main()

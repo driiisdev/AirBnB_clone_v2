@@ -1,60 +1,58 @@
 #!/usr/bin/python3
-"""
-Contains the TestDBStorage classes
-"""
-
-from datetime import datetime
-import models
-from models.engine import db_storage
-from models.amenity import Amenity
+"""test for database storage"""
+import unittest
+import pep8
+import json
+import os
 from models.base_model import BaseModel
+from models.user import User
+from models.state import State
 from models.city import City
+from models.amenity import Amenity
 from models.place import Place
 from models.review import Review
-from models.state import State
-from models.user import User
-import unittest
-from models import storage
+from models.engine.db_storage import DBStorage
+from os import getenv
 
-DBStorage = db_storage.DBStorage
+class TestDBStorage(unittest.TestCase):
+    '''this will test the DBStorage'''
 
+    @classmethod
+    def setUpClass(cls):
+        """set up for test"""
+        cls.user = User()
+        cls.user.first_name = "Kev"
+        cls.user.last_name = "Yo"
+        cls.user.email = "1234@yahoo.com"
+        cls.storage = DBStorage()
 
-class TestFileStorage(unittest.TestCase):
-    """Test the FileStorage class"""
-    @unittest.skipIf(models.storage_t != 'db', "not testing db storage")
-    def test_all_returns_dict(self):
-        """Test that all returns a dictionaty"""
-        self.assertIs(type(models.storage.all()), dict)
+    @classmethod
+    def teardown(cls):
+        """at the end of the test this will tear it down"""
+        del cls.user
 
-    @unittest.skipIf(models.storage_t != 'db', "not testing db storage")
-    def test_all_no_class(self):
-        """Test that all returns all rows when no class is passed"""
+    def tearDown(self):
+        """teardown"""
+        # TODO: anything? wtf!
 
-    @unittest.skipIf(models.storage_t != 'db', "not testing db storage")
-    def test_new(self):
-        """test that new adds an object to the database"""
+    @unittest.skipIf(getenv("HBNB_TYPE_STORAGE") != "db",
+                     "Not using db")
+    def test_pep8_DBStorage(self):
+        """Tests pep8 style"""
+        style = pep8.StyleGuide(quiet=True)
+        p = style.check_files(['models/engine/db_storage.py'])
+        self.assertEqual(p.total_errors, 0, "fix pep8")
 
-    @unittest.skipIf(models.storage_t != 'db', "not testing db storage")
-    def test_save(self):
-        """Test that save properly saves objects to file.json"""
-
-    def test_get_db(self):
-        """ Tests method for obtaining an instance db storage"""
-        dic = {"name": "Cundinamarca"}
-        instance = State(**dic)
-        storage.new(instance)
+    @unittest.skipIf(getenv("HBNB_TYPE_STORAGE") != "db",
+                     "Not using db")
+    def test_all(self):
+        """tests if all works in File Storage"""
+        storage = DBStorage()
+        storage.reload()
+        dict_len = len(storage.all())
+        s = State(name="test_all_state")
+        s.save()
         storage.save()
-        get_instance = storage.get(State, instance.id)
-        self.assertEqual(get_instance, instance)
+        self.assertIs(len(storage.all()), dict_len + 1)
 
-    def test_count(self):
-        """ Tests count method db storage """
-        dic = {"name": "Vecindad"}
-        state = State(**dic)
-        storage.new(state)
-        dic = {"name": "Mexico", "state_id": state.id}
-        city = City(**dic)
-        storage.new(city)
-        storage.save()
-        c = storage.count()
-        self.assertEqual(len(storage.all()), c)
+

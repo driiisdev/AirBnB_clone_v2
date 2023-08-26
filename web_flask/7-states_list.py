@@ -1,23 +1,26 @@
 #!/usr/bin/python3
-""" starts a Flask web application."""
+"""Minimal flask app"""
 
+from flask import Flask, render_template
 from models import storage
-from models.state import State
-from flask import Flask
-from flask import render_templates
+from models import State
 app = Flask(__name__)
 
 
-@app.route('/states_list', strict_slashes=False)
-def states():
-    """returns a rendered html template at /statea_list route."""
-    return render_template('7-states_list.html',
-                           states=storage.all('State').values())
-
 @app.teardown_appcontext
-def teardown(self):
-    """Removes the current SQLAlchemy Session"""
+def closedb(foo):
+    """Closes db session"""
     storage.close()
 
-if __name__ == "__main__":
-    app.run(host='0.0.0.0')
+
+@app.route('/states_list', strict_slashes=False)
+def states_list():
+    """Route /states_list"""
+    states = list(storage.all(State).values())
+    states.sort(key=lambda state: state.name)
+    return render_template('7-states_list.html', states=states)
+
+
+if __name__ == '__main__':
+    storage.reload()
+    app.run("0.0.0.0", 5000)

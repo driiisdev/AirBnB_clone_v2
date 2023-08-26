@@ -1,12 +1,13 @@
--- this script prepares a MySQL server for the project
--- create project developement database with the name : hbnb_dev_db
+-- Creates the database hbnb_dev_db with specified paramenters
+-- Create database
 CREATE DATABASE IF NOT EXISTS hbnb_dev_db;
--- creating new user named : hbnb_dev with all privileges on the db hbnb_dev_db
--- with the password : hbnb_dev_pwd if it dosen't exist
-CREATE USER IF NOT EXISTS 'hbnb_dev'@'localhost' IDENTIFIED BY 'hbnb_dev_pwd';
--- granting all privileges to the new user
+-- Creates user if doesn't exist
+CREATE USER IF NOT EXISTS 'hbnb_dev'@'localhost';
+-- Sets password for user
+SET PASSWORD FOR 'hbnb_dev'@'localhost' = 'hbnb_dev_pwd';
+-- Grants privileges to user on database
 GRANT ALL PRIVILEGES ON hbnb_dev_db.* TO 'hbnb_dev'@'localhost';
-FLUSH PRIVILEGES;
--- granting the SELECT privilege for the user hbnb_dev in the db performance_schema
+-- Grants select privileges to user on performance_schema database
 GRANT SELECT ON performance_schema.* TO 'hbnb_dev'@'localhost';
+-- Flush privileges
 FLUSH PRIVILEGES;

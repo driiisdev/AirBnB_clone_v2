@@ -1,17 +1,20 @@
 #!/usr/bin/python3
-"""Fabric script that generates a .tgz archive
-from the contents of the web_static folder"""
+""" Fabric script to create tarball"""
 
-from fabric.operations import local
+import tarfile
+import os
 from datetime import datetime
 
 
 def do_pack():
-    """Function to compress files"""
-    local("mkdir -p versions")
-    result = local("tar -cvzf versions/web_static_{}.tgz web_static"
-                   .format(datetime.strftime(datetime.now(), "%Y%m%d%H%M%S")),
-                   capture=True)
-    if result.failed:
+    """ Creates tar archive"""
+    savedir = "versions/"
+    filename = "web_static_" + datetime.now().strftime("%Y%m%d%H%M%S") + ".tgz"
+    if not os.path.exists(savedir):
+        os.mkdir(savedir)
+    with tarfile.open(savedir + filename, "w:gz") as tar:
+        tar.add("web_static", arcname=os.path.basename("web_static"))
+    if os.path.exists(savedir + filename):
+        return savedir + filename
+    else:
         return None
-    return result
