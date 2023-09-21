@@ -33,6 +33,7 @@ def do_deploy(archive_path):
 
     return True
 
+
 def do_deploy(archive_path):
     """ Deploys archive to servers"""
     if not os.path.exists(archive_path):

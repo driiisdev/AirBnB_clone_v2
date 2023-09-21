@@ -27,8 +27,15 @@
       tags:
         - deploy
 
+    - name: Create destination directory
+      file:
+        path: "/data/web_static/releases/{{ archive_name.stdout }}"
+        state: directory
+      tags:
+        - deploy
+
     - name: Rename extracted folder
-      shell: find /data/web_static/releases/web_static/ -mindepth 1 -maxdepth 1 -exec mv -t /data/web_static/releases/{{ archive_name.stdout }}/ {} +
+      shell: find /data/web_static/releases/web_static/ -mindepth 1 -maxdepth 1 -exec mv -t "/data/web_static/releases/{{ archive_name.stdout }}/" {} +
       args:
         warn: no
       tags:
