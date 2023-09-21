@@ -1,0 +1,42 @@
+---
+- name: Deploy web archive
+  hosts: ["54.175.225.218", "35.153.98.2"]
+  remote_user: ubuntu
+  become: yes  # If tasks require sudo privileges
+  gather_facts: no  # Disable gathering facts to improve performance
+
+  tasks:
+    - name: Copy web archive to remote server
+      copy:
+        src: ./versions/web_static_20230921150558.tgz  # Adjust the source path relative to your project directory
+        dest: /tmp/
+      tags:
+        - deploy
+
+    - name: Extract archive
+      unarchive:
+        src: /tmp/web_static_20230921150558.tgz  # Adjust the source path to match the previous task
+        dest: /data/web_static/releases/
+        remote_src: yes
+      tags:
+        - deploy
+
+    - name: Set archive_name
+      command: date +"web_static_%Y%m%d%H%M%S"
+      register: archive_name
+      tags:
+        - deploy
+
+    - name: Rename extracted folder
+      shell: find /data/web_static/releases/web_static/ -mindepth 1 -maxdepth 1 -exec mv -t /data/web_static/releases/{{ archive_name.stdout }}/ {} +
+      args:
+        warn: no
+      tags:
+        - deploy
+
+    - name: Create symbolic link to current
+      command: ln -sf "/data/web_static/releases/{{ archive_name.stdout }}/" /data/web_static/current
+      args:
+        warn: no
+      tags:
+        - deploy
