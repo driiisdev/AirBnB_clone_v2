@@ -1,6 +1,6 @@
 ---
 - name: Deploy web archive
-  hosts: ["54.175.225.218", "35.153.98.2"]
+  hosts: ["100.26.122.130", "35.153.93.220"]
   remote_user: ubuntu
   become: yes  # If tasks require sudo privileges
   gather_facts: no  # Disable gathering facts to improve performance

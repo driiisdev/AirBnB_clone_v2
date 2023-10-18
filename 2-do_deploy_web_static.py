@@ -9,32 +9,28 @@
  ubuntu
 """
 from fabric.api import env, put, run
-import os.path
+from os.path import exists
 
-env.hosts = ["54.175.225.218", "35.153.98.2"]
+env.hosts = ["100.26.122.130", "35.153.93.220"]
 env.user = "ubuntu"
-env.key_filename = '~/.ssh/school'
-# env.use_ssh_config
 
 
 def do_deploy(archive_path):
-    """ deploy to a web server """
-    if not os.path.exists(archive_path):
+    """distributes an archive to the web servers"""
+    if exists(archive_path) is False:
         return False
     try:
-        file = archive_path.split("/")[-1]
-        name = file.split(".")[0]
-        path = "/data/web_static/releases/".format(name)
-        put(archive_path, "/tmp/")
-        run('sudo mkdir -p {}{}/'.format(path, name))
-        run('sudo tar -xzf /tmp/{} -C {}{}/'.format(file, path, name))
-        run('sudo rm /tmp/{}'.format(file))
-        run('sudo mv {0}{1}/web_static/* {0}{1}/'.format(path, name))
-        run("sudo rm -rf {}{}/web_static".format(path, name))
-        run('sudo rm -rf /data/web_static/current')
-        run("sudo ln -s {}{}/ /data/web_static/current".format(path, name))
-        run('echo "New version deployed!"')
+        file_n = archive_path.split("/")[-1]
+        no_ext = file_n.split(".")[0]
+        path = "/data/web_static/releases/"
+        put(archive_path, '/tmp/')
+        run('mkdir -p {}{}/'.format(path, no_ext))
+        run('tar -xzf /tmp/{} -C {}{}/'.format(file_n, path, no_ext))
+        run('rm /tmp/{}'.format(file_n))
+        run('mv {0}{1}/web_static/* {0}{1}/'.format(path, no_ext))
+        run('rm -rf {}{}/web_static'.format(path, no_ext))
+        run('rm -rf /data/web_static/current')
+        run('ln -s {}{}/ /data/web_static/current'.format(path, no_ext))
         return True
-    except BaseException:
-        # run('echo "wahala!"')
-        return False
+    except:
+        

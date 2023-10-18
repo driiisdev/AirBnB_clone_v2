@@ -2,10 +2,11 @@
 """ Fabric script to create tarball"""
 
 import tarfile
+from fabric.api import task
 import os
 from datetime import datetime
 
-
+@task
 def do_pack():
     """ Creates tar archive"""
     savedir = "versions/"
