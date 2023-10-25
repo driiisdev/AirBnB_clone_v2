@@ -1,3 +1,4 @@
+# using puppet command to deploy static files to the server
 
   node default {
 
